@@ -1,0 +1,455 @@
+<!-- insights-dashboard.component.html -->
+
+<div class="banner-filter-wrapper">
+  <!-- Hero banner -->
+  <div class="hero-banner" role="banner" aria-labelledby="dashboard-title">
+    <div class="hero-content">
+      <h1 id="dashboard-title">Your Insights Dashboard</h1>
+      <p id="dashboard-description">Your journeys, emissions and personalised recommendations all in one place.</p>
+    </div>
+  </div>
+
+  <!-- Time period filter -->
+  <div class="filter-bar-container" role="navigation" aria-labelledby="period-filter-label">
+    <span id="period-filter-label" class="sr-only">Time period filter</span>
+    <div class="filter-icon-wrapper" aria-hidden="true">
+      <fa-icon icon="filter"></fa-icon>
+    </div>
+    <div class="filter-tabs-wrapper" role="tablist" aria-label="Time period selection">
+      <button
+        class="filter-tab"
+        role="tab"
+        id="week-tab"
+        [attr.aria-selected]="selectedPeriod === 'week'"
+        [attr.aria-controls]="'dashboard-content'"
+        [ngClass]="{ active: selectedPeriod === 'week' }"
+        (click)="setPeriod('week')"
+        (keydown.enter)="setPeriod('week')"
+        (keydown.space)="$event.preventDefault(); setPeriod('week')"
+      >
+        This week
+      </button>
+      <button
+        class="filter-tab"
+        role="tab"
+        id="month-tab"
+        [attr.aria-selected]="selectedPeriod === 'month'"
+        [attr.aria-controls]="'dashboard-content'"
+        [ngClass]="{ active: selectedPeriod === 'month' }"
+        (click)="setPeriod('month')"
+        (keydown.enter)="setPeriod('month')"
+        (keydown.space)="$event.preventDefault(); setPeriod('month')"
+      >
+        This month
+      </button>
+      <button
+        class="filter-tab"
+        role="tab"
+        id="year-tab"
+        [attr.aria-selected]="selectedPeriod === 'year'"
+        [attr.aria-controls]="'dashboard-content'"
+        [ngClass]="{ active: selectedPeriod === 'year' }"
+        (click)="setPeriod('year')"
+        (keydown.enter)="setPeriod('year')"
+        (keydown.space)="$event.preventDefault(); setPeriod('year')"
+      >
+        This year
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-container">
+  <!-- Main dashboard content -->
+  <main
+    id="main-content"
+    class="dashboard-content"
+    role="main"
+    [attr.aria-busy]="isLoading"
+    [attr.aria-live]="isLoading ? 'polite' : 'off'"
+  >
+    <div class="dashboard-container">
+      <!-- Loading indicator for screen readers -->
+      <div *ngIf="isLoading" class="sr-only" aria-live="assertive">Loading dashboard data for {{ getFormattedPeriod() }}...</div>
+
+      <!-- Main dashboard content -->
+      <div class="dashboard-content" id="dashboard-content" role="tabpanel" [attr.aria-labelledby]="selectedPeriod + '-tab'">
+        <!-- Summary metrics -->
+        <section class="metrics-container" role="region" aria-labelledby="metrics-heading">
+          <h2 id="metrics-heading" class="sr-only">Summary metrics</h2>
+
+          <app-metric-card
+            icon="leaf"
+            label="Total number of green journeys"
+            [value]="totalJourneys"
+            ariaDescription="Your total number of green journeys for {{ getFormattedPeriod() }} is {{ totalJourneys }}."
+            (dialogStateChange)="onMetricDialogStateChange($event, 'Total number of green journeys')"
+          >
+          </app-metric-card>
+
+          <app-metric-card
+            icon="thumbs-up"
+            label="Average trip rating"
+            [value]="greenRating"
+            ariaDescription="Your average trip rating for {{ getFormattedPeriod() }} is {{ greenRating }}."
+            (dialogStateChange)="onMetricDialogStateChange($event, 'Average trip rating')"
+          >
+          </app-metric-card>
+
+          <app-metric-card
+            icon="gas-pump"
+            label="Average CO₂ emissions"
+            [value]="co2Emissions.toFixed(1) + ' kg'"
+            ariaDescription="Your average CO₂ emissions for {{ getFormattedPeriod() }} is {{ co2Emissions.toFixed(1) }} kilograms."
+            (dialogStateChange)="onMetricDialogStateChange($event, 'Average CO₂ emissions')"
+          >
+          </app-metric-card>
+        </section>
+
+        <!-- Charts section -->
+        <section class="charts-section" role="region" aria-labelledby="charts-heading">
+          <h2 id="charts-heading" class="sr-only">Charts and comparisons</h2>
+
+          <div class="chart-card">
+            <!-- The filter tabs are inside the chart card at the top -->
+            <div class="chart-filter-tabs" role="tablist" aria-label="Chart view selection">
+              <button
+                class="filter-tab"
+                role="tab"
+                id="emissions-tab"
+                [attr.aria-selected]="activeTab === 'emissions'"
+                [attr.aria-controls]="'emissions-chart-content'"
+                [ngClass]="{ active: activeTab === 'emissions' }"
+                (click)="setActiveTab('emissions')"
+                (keydown.enter)="setActiveTab('emissions')"
+                (keydown.space)="$event.preventDefault(); setActiveTab('emissions')"
+              >
+                Emissions over time
+              </button>
+              <button
+                class="filter-tab"
+                role="tab"
+                id="rating-tab"
+                [attr.aria-selected]="activeTab === 'rating'"
+                [attr.aria-controls]="'rating-chart-content'"
+                [ngClass]="{ active: activeTab === 'rating' }"
+                (click)="setActiveTab('rating')"
+                (keydown.enter)="setActiveTab('rating')"
+                (keydown.space)="$event.preventDefault(); setActiveTab('rating')"
+              >
+                Trip rating breakdown
+              </button>
+            </div>
+
+            <!-- Chart Info Dialog (hidden by default) -->
+            <div *ngIf="showChartInfo" class="chart-info-dialog" role="dialog" aria-labelledby="chart-info-title">
+              <div class="dialog-content">
+                <h3 id="chart-info-title">{{ activeTab === 'emissions' ? 'Emissions Chart Information' : 'Rating Chart Information' }}</h3>
+                <p *ngIf="activeTab === 'emissions'">
+                  This chart shows your CO₂ emissions compared to the average user over {{ getFormattedPeriod() }}. The orange line
+                  represents your emissions, while the red line shows the average user's emissions.
+                </p>
+                <p *ngIf="activeTab === 'rating'">
+                  This chart shows the breakdown of your trip ratings over {{ getFormattedPeriod() }}. Ratings are categorized as Excellent
+                  (pink), Good (yellow), and Poor (red).
+                </p>
+                <button
+                  class="close-dialog-btn"
+                  aria-label="Close information dialog"
+                  (click)="toggleChartInfo()"
+                  (keydown.enter)="toggleChartInfo()"
+                  (keydown.space)="$event.preventDefault(); toggleChartInfo()"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <!-- Chart Legend for Emissions with improved accessibility -->
+            <div class="chart-legend" *ngIf="activeTab === 'emissions'">
+              <div class="legend-item">
+                <div class="legend-dot orange" aria-hidden="true"></div>
+                <span>You</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot red" aria-hidden="true"></div>
+                <span>Average user</span>
+              </div>
+            </div>
+
+            <!-- Chart Legend for Ratings with improved accessibility -->
+            <div class="chart-legend" *ngIf="activeTab === 'rating'">
+              <div class="legend-item" *ngFor="let label of ratingLabels; let i = index">
+                <div class="legend-dot" [ngStyle]="{ 'background-color': ratingColors[i] }" aria-hidden="true"></div>
+                <span>{{ label }}</span>
+              </div>
+            </div>
+
+            <!-- Line chart for emissions over time -->
+            <div
+              id="emissions-chart-content"
+              class="chart-content"
+              *ngIf="activeTab === 'emissions'"
+              role="tabpanel"
+              aria-labelledby="emissions-tab"
+            >
+              <canvas id="emissionsLineChart" aria-label="Line chart showing emissions over time" role="img"></canvas>
+
+              <!-- Accessible table representation of chart data -->
+              <div class="sr-only">
+                <h3>Emissions Data Table</h3>
+                <p>{{ getChartSummary() }}</p>
+                <table>
+                  <caption>
+                    CO₂ emissions by time period
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Time Period</th>
+                      <th scope="col">Your Emissions (kg)</th>
+                      <th scope="col">Average User Emissions (kg)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let label of chartLabels; let i = index">
+                      <th scope="row">{{ label }}</th>
+                      <td>{{ yourEmissionsData[i]?.toFixed(1) || '0.0' }}</td>
+                      <td>{{ avgEmissionsData[i]?.toFixed(1) || '0.0' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Pie chart for rating breakdown -->
+            <div
+              id="rating-chart-content"
+              class="chart-content"
+              *ngIf="activeTab === 'rating'"
+              role="tabpanel"
+              aria-labelledby="rating-tab"
+            >
+              <canvas id="ratingPieChart" aria-label="Pie chart showing trip rating breakdown" role="img"></canvas>
+
+              <!-- Accessible table representation of chart data -->
+              <div class="sr-only">
+                <h3>Rating Breakdown Data</h3>
+                <p>{{ getRatingChartSummary() }}</p>
+                <table>
+                  <caption>
+                    Trip ratings breakdown
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Rating Category</th>
+                      <th scope="col">Number of Trips</th>
+                      <th scope="col">Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let label of ratingLabels; let i = index">
+                      <th scope="row">{{ label }}</th>
+                      <td>{{ ratingData[i] || 0 }}</td>
+                      <td>{{ getRatingPercentage(i) }}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Show a message when no data is available -->
+              <div class="no-data-message" *ngIf="ratingLabels.length === 1 && ratingLabels[0] === 'No Data'" aria-live="polite">
+                <p>No rating data available for this period</p>
+              </div>
+            </div>
+
+            <div class="week-label" aria-live="polite">{{ getFormattedPeriod() }}</div>
+          </div>
+
+          <!-- Comparison card -->
+          <div class="comparison-card" role="region" aria-labelledby="comparison-heading">
+            <h3 id="comparison-heading" class="sr-only">Emissions comparison</h3>
+            <div class="eco-image" aria-hidden="true">
+              <!-- Show different images based on emission comparison -->
+              <img *ngIf="isBetterThanAverage" src="content/images/Celebrate-Festivities.svg" alt="" />
+              <img *ngIf="!isBetterThanAverage" src="content/images/Factory-Illustration.svg" alt="" />
+            </div>
+            <div class="emission-label">You emit</div>
+            <div class="emission-value" aria-live="polite">{{ comparisonPercentage }}%</div>
+            <div class="emission-description">CO<sub>2</sub> {{ isBetterThanAverage ? 'less' : 'more' }} than other users!</div>
+            <!-- Additional screen reader description -->
+            <div class="sr-only" aria-live="polite">
+              You emit {{ comparisonPercentage }}% CO2 {{ isBetterThanAverage ? 'less' : 'more' }} than the average user.
+              {{ isBetterThanAverage ? 'This is good for the environment!' : 'There is room for improvement.' }}
+            </div>
+          </div>
+        </section>
+
+        <!-- Trip details container with grid system -->
+        <section class="trip-details-container" role="region" aria-labelledby="trip-details-heading">
+          <h2 id="trip-details-heading" class="sr-only">Trip details and recommendations</h2>
+
+          <!-- Highest emission trip card - 5 columns -->
+          <div class="trip-details-card">
+            <button
+              class="info-icon"
+              aria-label="Trip details information"
+              (click)="toggleTripInfoDialog()"
+              (keydown.enter)="toggleTripInfoDialog()"
+              (keydown.space)="$event.preventDefault(); toggleTripInfoDialog()"
+            >
+              <fa-icon [icon]="'info-circle'"></fa-icon>
+            </button>
+
+            <!-- Trip Info Dialog (hidden by default) -->
+            <div *ngIf="showTripInfoDialog" class="info-dialog" role="dialog" aria-labelledby="trip-info-title">
+              <div class="dialog-content">
+                <h3 id="trip-info-title">Trip Details Information</h3>
+                <p>
+                  This section shows your highest emission trip during {{ getFormattedPeriod() }}. The highest emissions trip is the journey
+                  that produced the most CO₂.
+                </p>
+                <button
+                  class="close-dialog-btn"
+                  aria-label="Close trip information dialog"
+                  (click)="toggleTripInfoDialog()"
+                  (keydown.enter)="toggleTripInfoDialog()"
+                  (keydown.space)="$event.preventDefault(); toggleTripInfoDialog()"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div class="trip-header">
+              <div class="icon-box" aria-hidden="true">
+                <fa-icon [icon]="'route'"></fa-icon>
+              </div>
+              <h3 class="trip-details-title">Your highest emission trip this {{ selectedPeriod }}</h3>
+            </div>
+
+            <div class="trip-details-content" *ngIf="highestEmissionTrip.found" aria-live="polite">
+              <p class="trip-details">Trip details:</p>
+              <p class="trip-route">
+                {{ highestEmissionTrip.date }}, {{ highestEmissionTrip.startPoint }} - {{ highestEmissionTrip.endPoint }}
+              </p>
+              <p class="trip-text">Distance: {{ highestEmissionTrip.distance }} km</p>
+              <p class="trip-text">Mode of transport: {{ highestEmissionTrip.transportMode }}</p>
+              <p class="trip-text">CO₂ emissions: {{ highestEmissionTrip.co2Value.toFixed(1) }} kg</p>
+
+              <!-- Screen reader more detailed description -->
+              <div class="sr-only">
+                Your highest emission trip during {{ getFormattedPeriod() }} was on {{ highestEmissionTrip.date }} from
+                {{ highestEmissionTrip.startPoint }} to {{ highestEmissionTrip.endPoint }}, covering a distance of
+                {{ highestEmissionTrip.distance }} kilometers. You used {{ highestEmissionTrip.transportMode }} as your mode of transport,
+                which resulted in {{ highestEmissionTrip.co2Value.toFixed(1) }} kilograms of CO₂ emissions.
+              </div>
+            </div>
+            <div class="trip-details-content" *ngIf="!highestEmissionTrip.found" aria-live="polite">
+              <p class="trip-text">No trip data available for this period</p>
+            </div>
+          </div>
+
+          <!-- Coal comparison card - 3 columns -->
+          <div class="coal-comparison-card" role="region" aria-labelledby="coal-comparison-heading">
+            <p id="coal-comparison-heading" class="coal-title">This is equivalent to burning</p>
+            <div *ngIf="highestEmissionTrip.found">
+              <div class="coal-value" aria-live="polite">{{ highestEmissionTrip.coalEquivalent.toFixed(1) }} kg</div>
+              <p class="coal-label">of coal</p>
+              <div class="coal-icon" aria-hidden="true">
+                <img src="content/images/coal.svg" alt="" *ngIf="highestEmissionTrip.coalEquivalent > 0" />
+              </div>
+
+              <!-- Screen reader description -->
+              <div class="sr-only">
+                The CO₂ emissions from your highest emission trip ({{ highestEmissionTrip.co2Value.toFixed(1) }} kg) are equivalent to
+                burning {{ highestEmissionTrip.coalEquivalent.toFixed(1) }} kilograms of coal.
+              </div>
+            </div>
+            <div *ngIf="!highestEmissionTrip.found">
+              <div class="coal-value">-</div>
+              <p class="coal-label">No data available</p>
+            </div>
+          </div>
+
+          <!-- Recommendation card - 4 columns -->
+          <div class="recommendation-card" role="region" aria-labelledby="recommendation-heading">
+            <button
+              class="info-icon"
+              aria-label="Recommendation information"
+              (click)="toggleRecommendationInfoDialog()"
+              (keydown.enter)="toggleRecommendationInfoDialog()"
+              (keydown.space)="$event.preventDefault(); toggleRecommendationInfoDialog()"
+            >
+              <fa-icon [icon]="'info-circle'"></fa-icon>
+            </button>
+
+            <!-- Recommendation Info Dialog (hidden by default) -->
+            <div *ngIf="showRecommendationInfoDialog" class="info-dialog" role="dialog" aria-labelledby="recommendation-info-title">
+              <div class="dialog-content">
+                <h3 id="recommendation-info-title">Recommendation Information</h3>
+                <p>
+                  This section provides suggestions for more environmentally friendly transportation options for your highest emission trip.
+                  You can cycle through different options by clicking on the transportation type.
+                </p>
+                <button
+                  class="close-dialog-btn"
+                  aria-label="Close recommendation information dialog"
+                  (click)="toggleRecommendationInfoDialog()"
+                  (keydown.enter)="toggleRecommendationInfoDialog()"
+                  (keydown.space)="$event.preventDefault(); toggleRecommendationInfoDialog()"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div class="recommendation-header">
+              <div class="icon-box" aria-hidden="true">
+                <fa-icon [icon]="'lightbulb'"></fa-icon>
+              </div>
+              <h4 id="recommendation-heading" class="recommendation-title">Recommendation</h4>
+            </div>
+
+            <div class="recommendation-content" *ngIf="recommendations.length > 0 && currentRecommendationIndex >= 0" aria-live="polite">
+              <p class="recommendation-text">
+                Switching to a
+                <button
+                  class="transport-link"
+                  [attr.aria-label]="'Cycle through transport options, currently ' + (getCurrentRecommendation()?.displayName || '')"
+                  (click)="cycleRecommendation()"
+                  (keydown.enter)="cycleRecommendation()"
+                  (keydown.space)="$event.preventDefault(); cycleRecommendation()"
+                >
+                  {{ getCurrentRecommendation()?.displayName }}
+                </button>
+                for this trip
+              </p>
+              <p class="recommendation-text">would reduce CO₂ by</p>
+              <div class="reduction-value">{{ getCurrentRecommendation()?.reduction }}%</div>
+
+              <!-- Screen reader more detailed description -->
+              <div class="sr-only">
+                For your highest emission trip, switching from {{ highestEmissionTrip.transportMode }} to
+                {{ getCurrentRecommendation()?.displayName }} would reduce CO₂ emissions by {{ getCurrentRecommendation()?.reduction }}%.
+                Press Enter or Space to see other transportation options.
+                {{ getRecommendationDetails() }}
+              </div>
+            </div>
+            <div class="recommendation-content" *ngIf="recommendations.length === 0 || currentRecommendationIndex < 0" aria-live="polite">
+              <p class="recommendation-text">No greener transport options available for this trip.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal backdrop for dialogs -->
+<div
+  *ngIf="showChartInfo || showTripInfoDialog || showRecommendationInfoDialog"
+  class="modal-backdrop"
+  (click)="closeAllDialogs()"
+  role="presentation"
+  aria-hidden="true"
+></div>

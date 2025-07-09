@@ -1,0 +1,11 @@
+--- AESEncTool.old.java	2025-02-06 10:42:12.000000000 +0000
++++ AESEncTool.java	2025-02-06 10:44:12.000000000 +0000
+@@ -70,7 +70,7 @@
+ 
+             //Set up the AES key & cipher object in CTR mode
+             SecretKeySpec secretKeySpec = new SecretKeySpec(hexStringToByteArray(hexKey), "AES");
+-            Cipher encAESCTRcipher = Cipher.getInstance("AES/CTR/PKCS5Padding");
++            Cipher encAESCTRcipher = Cipher.getInstance("AES/CTR/NoPadding");
+             SecureRandom random = new SecureRandom();
+             byte iv[] = new byte[16];
+             random.nextBytes(iv);

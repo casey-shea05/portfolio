@@ -1,0 +1,2 @@
+¯º¥Xwu†ßHˆûŽr !Well done. You have successfully decrypted a file encrypted with AES/CTR.
+Use this with the CCM flag to get your submission flag: flag{de8f

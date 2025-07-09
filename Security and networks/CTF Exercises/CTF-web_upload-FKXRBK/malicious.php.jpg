@@ -1,0 +1,5 @@
+<?php
+// Read sql.php to find the database location
+$sql_content = file_get_contents('/var/www/html/sql.php');
+echo "<pre>" . htmlspecialchars($sql_content) . "</pre>";
+?>

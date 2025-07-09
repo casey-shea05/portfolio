@@ -1,0 +1,4 @@
+<?php
+$file = isset($_GET['file']) ? $_GET['file'] : '../sql.php';
+echo "<pre>" . htmlentities(file_get_contents($file)) . "</pre>";
+?>

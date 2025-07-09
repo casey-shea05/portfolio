@@ -1,0 +1,2 @@
+Well done. You have successfully decrypted a file encrypted with AES/CCM.
+Use this with the CTR flag to get your submission flag: 144bdf67}

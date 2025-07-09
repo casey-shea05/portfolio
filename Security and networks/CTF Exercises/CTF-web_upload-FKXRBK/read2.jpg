@@ -1,0 +1,83 @@
+<?php
+// Try to connect to the database using the same path as in sql.php
+$db_path = __DIR__ . "/../../database.db";
+try {
+    $db = new SQLite3($db_path);
+    
+    // Show all tables
+    echo "<h2>Tables in the database:</h2>";
+    $tables = $db->query("SELECT name FROM sqlite_master WHERE type='table';");
+    echo "<ul>";
+    $table_names = [];
+    while ($table = $tables->fetchArray()) {
+        echo "<li>" . htmlentities($table['name']) . "</li>";
+        $table_names[] = $table['name'];
+    }
+    echo "</ul>";
+    
+    // Show contents of each table
+    foreach ($table_names as $table_name) {
+        echo "<h3>Contents of table: " . htmlentities($table_name) . "</h3>";
+        $result = $db->query("SELECT * FROM " . SQLite3::escapeString($table_name));
+        echo "<table border='1'>";
+        
+        // Get column names
+        $first_row = $result->fetchArray(SQLITE3_ASSOC);
+        if ($first_row) {
+            echo "<tr>";
+            foreach (array_keys($first_row) as $column) {
+                echo "<th>" . htmlentities($column) . "</th>";
+            }
+            echo "</tr>";
+            
+            // Reset result pointer
+            $result->reset();
+            
+            // Get data
+            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                echo "<tr>";
+                foreach ($row as $value) {
+                    echo "<td>" . htmlentities($value ?? 'NULL') . "</td>";
+                }
+                echo "</tr>";
+            }
+        }
+        echo "</table><br>";
+    }
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+    echo "<p>Tried to open database at: " . htmlentities($db_path) . "</p>";
+    
+    // Try alternate paths
+    $alternate_paths = [
+        "/var/www/html/database.db",
+        "../database.db",
+        "../../database.db",
+        "../../../database.db"
+    ];
+    
+    echo "<h2>Trying alternate paths:</h2>";
+    foreach ($alternate_paths as $path) {
+        echo "<p>Trying: " . htmlentities($path) . "... ";
+        if (file_exists($path)) {
+            echo "File exists!</p>";
+            try {
+                $db = new SQLite3($path);
+                echo "<p>Successfully opened database at " . htmlentities($path) . "</p>";
+                // List tables
+                $tables = $db->query("SELECT name FROM sqlite_master WHERE type='table';");
+                echo "<ul>";
+                while ($table = $tables->fetchArray()) {
+                    echo "<li>" . htmlentities($table['name']) . "</li>";
+                }
+                echo "</ul>";
+                break;
+            } catch (Exception $e2) {
+                echo "Error opening: " . $e2->getMessage() . "</p>";
+            }
+        } else {
+            echo "File does not exist.</p>";
+        }
+    }
+}
+?>
